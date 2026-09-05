@@ -1,9 +1,10 @@
 # Detection Under Load
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](LICENSE)
 [![CI](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml/badge.svg)](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Sigma](https://img.shields.io/badge/Detection-Sigma-6A5ACD)](https://sigmahq.io/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/YaCnDehfuli/detection-under-load)](https://github.com/YaCnDehfuli/detection-under-load/releases)
 
 **Technical focus:** detection engineering · Sigma · MITRE ATT&CK · Sysmon · KQL · Splunk SPL · false-positive measurement
 
