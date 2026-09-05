@@ -1,54 +1,40 @@
 # Detection Under Load
 
+Measures published Sigma coverage for ATT&CK T1003.001 when an operator renames or relocates the dumping tool.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](LICENSE)
 [![CI](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml/badge.svg)](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Sigma](https://img.shields.io/badge/Detection-Sigma-6A5ACD)](https://sigmahq.io/)
 [![Release](https://img.shields.io/github/v/release/YaCnDehfuli/detection-under-load)](https://github.com/YaCnDehfuli/detection-under-load/releases)
 
-**Technical focus:** detection engineering · Sigma · MITRE ATT&CK · Sysmon · KQL · Splunk SPL · false-positive measurement
+## Results
 
-Detection Under Load is a reproducible benchmark for detection-rule robustness.
-It runs published Sigma rules against real Windows telemetry, explains why rules
-miss, and then measures how much coverage survives small choices an operator
-controls: names, paths, PE metadata, and recorded artifact identity.
+80 published Sigma rules, 7 LSASS-dump captures, 354,229 events. Each tool trips 3–8 published rules (median 5). No published rule detects more than 4 of 7.
 
-The first study focuses on LSASS credential dumping, ATT&CK T1003.001. It is
-intentionally narrow because the corpus is unusually controlled: seven captures
-of the same technique, in the same lab and Sysmon configuration, with the
-dumping tool as the main variable.
+Rename drops 12 of 35 baseline detections. Relocation drops 8 additional. nanodump goes from 3 published detections to 0: all three required the literal string `dump`.
+
+Authored LSASS rule: 7/7 with 8 false positives in 91 benign captures / 514,202 events (1.56/100k). Six authored rules. Transfer test on 783,367 APT29 events: 3 of 6 fire on both days (a transfer test, not a deployment).
+
+<p align="center">
+  <img src="docs/figures/pair-breakdown.svg" alt="581 rule and capture pairs: 44 detected, 207 logic misses, 273 out of scope, 57 telemetry gaps" width="100%">
+</p>
+<sub>581 rule × capture pairs from <code>benchmark/results.json</code>: 44 detected, 207 logic misses, 273 out of scope, 57 telemetry gaps.</sub>
+
+**Research artifact.** Not a SIEM, not a deployed detection product.
+
+## Quickstart
+
+```bash
+git clone https://github.com/YaCnDehfuli/detection-under-load.git
+cd detection-under-load
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt pyyaml
+scripts/ci-local.sh --fast
+```
 
 ![Detection Under Load benchmark overview](docs/assets/detection-under-load-overview.svg)
-
-## Current result
-
-80 published Sigma rules select for T1003.001. Run against seven real dumping
-tools in 354,229 recorded Windows events, each tool triggers between 3 and 8
-published rules, with a median of 5. No single published rule detects more than
-4 of the 7 tools.
-
-| measurement | result |
-|---|---|
-| Published T1003.001 rules selected | 80 |
-| LSASS dumping captures | 7 |
-| Windows events in the attack captures | 354,229 |
-| Published rules firing per tool | 3 to 8 |
-| Median published coverage per tool | 5 rules |
-| Baseline detections lost after rename | 12 of 35 |
-| Additional detections lost after relocation | 8 |
-| nanodump after rename | 0 published detections |
-
-The main finding is not that "Sigma fails." It is more specific: a meaningful
-slice of published coverage depends on strings an operator can choose freely, or
-on directory filters that exclude the very activity they are meant to protect.
-The repository keeps telemetry gaps, out-of-scope tool-specific rules, and
-rule-logic misses separate so the number is explainable rather than just loud.
-
-For procdump, coverage goes up if you stop selecting only by technique tag. The
-tag-scoped selection falls from 7 rules to 3 after rename, while three rules
-tagged for a different technique begin firing because a suppression filter stops
-applying. That is a coverage-mapping finding, not a reason to loosen every
-selection blindly.
 
 [Findings](findings.md) | [Method](docs/method.md) | [Results](benchmark/results.md) | [Selection scope](benchmark/selection.md) | [Robustness](benchmark/robustness.md) | [Decisions](docs/decisions.md) | [Contributions](contrib/)
 
@@ -347,7 +333,7 @@ The full table, and every rule in the compensating layer by name, is in
 fourth population, reported apart from all three, because they were written after
 reading the results above.
 
-## What I wrote in response
+## Authored rules
 
 Six rules in `rules/`, each measured against the captures and against a benign
 corpus scoped to its own technique.
@@ -406,26 +392,14 @@ each query language, nothing about field availability, licensing or tuning in
 any particular estate. The measurements in this repo were made by the harness
 in `eval/`, not by either SIEM.
 
-## Running it
+## Individual commands
 
-### Clean-checkout verification
-
-This is the shortest reviewer path from a new checkout to an observable pipeline run:
-
-```bash
-git clone https://github.com/YaCnDehfuli/detection-under-load.git
-cd detection-under-load
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt pyyaml
-scripts/ci-local.sh --fast
-```
-
-The harness writes a durable progress record instead of relying on an animated
-terminal spinner, so the same signal remains readable in a terminal, redirected
-log, or CI transcript. Every stage shows its position, exact command, live
-stdout/stderr, pass/fail state, and elapsed time. Long or quiet stages also emit
-a `LIVE` heartbeat every 15 seconds:
+The Quickstart above is the shortest reviewer path. The harness writes a durable
+progress record instead of relying on an animated terminal spinner, so the same
+signal remains readable in a terminal, redirected log, or CI transcript. Every
+stage shows its position, exact command, live stdout/stderr, pass/fail state,
+and elapsed time. Long or quiet stages also emit a `LIVE` heartbeat every 15
+seconds:
 
 ```text
 [----------------------------]   0% | READY | pipeline initialized
@@ -441,8 +415,6 @@ a `LIVE` heartbeat every 15 seconds:
 Use `--fast` for the first proof of life. The default mode adds the pinned
 roughly 1.5 GB corpus and benchmark drift checks; `--release` also runs the
 wide population and exhaustive prescreen checks.
-
-### Individual commands
 
 ```bash
 python -m eval.corpus --fetch          # about 1.5 GB, pinned by commit and sha256
@@ -461,7 +433,7 @@ scripts/ci-local.sh                    # add the corpus and drift checks
 scripts/ci-local.sh --release          # add the wide run and exhaustive prescreen
 ```
 
-## Limits
+## Limitations
 
 Seven tools is seven tools, and one lab is one lab. The tiers are a model of an
 operator rather than a recording of one, and everything the model refuses to
