@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the repository and the measured study it records."
+title: "Detection Under Load"
+type: software
+authors:
+  - family-names: Dehfouli
+    given-names: Yasin
+    email: dehfouliyasin@gmail.com
+repository-code: "https://github.com/YaCnDehfuli/detection-under-load"
+license: MIT
+version: "1.0.0"
+date-released: "2026-09-05"
+abstract: "Sigma T1003.001 robustness study: renaming operator-controlled artifacts removed 12 of 35 baseline detections (nanodump 3→0)."
+keywords:
+  - sigma
+  - detection-engineering
+  - mitre-attack
+  - sysmon
+  - threat-detection
