@@ -1,6 +1,7 @@
 # Detection Under Load
 
-Measures published Sigma coverage for ATT&CK T1003.001 when an operator renames or relocates the dumping tool.
+Benchmarks published Sigma coverage for ATT&CK T1003.001 as an operator renames
+or relocates the dumping tool.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](LICENSE)
 [![CI](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml/badge.svg)](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml)
@@ -8,20 +9,32 @@ Measures published Sigma coverage for ATT&CK T1003.001 when an operator renames 
 [![Sigma](https://img.shields.io/badge/Detection-Sigma-6A5ACD)](https://sigmahq.io/)
 [![Release](https://img.shields.io/github/v/release/YaCnDehfuli/detection-under-load)](https://github.com/YaCnDehfuli/detection-under-load/releases)
 
+[Open the prepared results report](docs/index.html)
+
 ## Results
 
-80 published Sigma rules, 7 LSASS-dump captures, 354,229 events. Each tool trips 3–8 published rules (median 5). No published rule detects more than 4 of 7.
+The benchmark evaluates 80 published Sigma rules against seven LSASS-dump
+captures containing 354,229 events. Each tool triggers 3–8 published rules
+(median 5); no published rule detects more than four of the seven captures.
 
-Rename drops 12 of 35 baseline detections. Relocation drops 8 additional. nanodump goes from 3 published detections to 0: all three required the literal string `dump`.
+Renaming removes 12 of 35 baseline detections; relocation removes eight more.
+nanodump falls from three published detections to zero because all three require
+the literal string `dump`.
 
-Authored LSASS rule: 7/7 with 8 false positives in 91 benign captures / 514,202 events (1.56/100k). Six authored rules. Transfer test on 783,367 APT29 events: 3 of 6 fire on both days (a transfer test, not a deployment).
+The authored LSASS rule detects 7/7 captures with eight false positives across
+91 benign captures and 514,202 events (1.56/100k). The repository contains six
+authored rules; in a transfer test over 783,367 APT29 events, three fire on both
+days. This is a transfer test, not a deployment.
 
 <p align="center">
   <img src="docs/figures/pair-breakdown.svg" alt="581 rule and capture pairs: 44 detected, 207 logic misses, 273 out of scope, 57 telemetry gaps" width="100%">
 </p>
 <sub>581 rule × capture pairs from <code>benchmark/results.json</code>: 44 detected, 207 logic misses, 273 out of scope, 57 telemetry gaps.</sub>
 
-**Research artifact.** Not a SIEM, not a deployed detection product.
+**Research artifact.** This repository is neither a SIEM nor a deployed
+detection product.
+
+![Detection Under Load benchmark overview](docs/assets/detection-under-load-overview.svg)
 
 ## Quickstart
 
@@ -34,204 +47,26 @@ python -m pip install -r requirements.txt pyyaml
 scripts/ci-local.sh --fast
 ```
 
-![Detection Under Load benchmark overview](docs/assets/detection-under-load-overview.svg)
-
-[Findings](findings.md) | [Method](docs/method.md) | [Results](benchmark/results.md) | [Selection scope](benchmark/selection.md) | [Robustness](benchmark/robustness.md) | [Decisions](docs/decisions.md) | [Contributions](contrib/)
+[Pipeline, evaluator modules and individual commands](docs/reference.md).
 
 ## Why measure at all
 
-Detection rules are written, tagged, reviewed and deployed largely on the
-strength of their description. A rule says it detects credential dumping, it
-carries `attack.t1003.001`, and it enters a pipeline. What almost never happens
-is running it against the same technique carried out several different ways and
-counting what comes out.
+Detection rules are often written, tagged, reviewed, and deployed largely on
+the strength of their descriptions. A rule claims to detect credential dumping,
+carries `attack.t1003.001`, and enters a pipeline. Far less often is it executed
+against several implementations of the same technique and measured directly.
 
-That gap is worth closing because the failure mode it hides is specific. A rule
-can be correct, well written, and still keyed to something the operator chooses
-freely, such as the name of a binary. Nothing in a static review catches that.
-Only execution does.
+That gap hides a specific failure mode: a well-formed rule can depend on an
+artifact the operator controls, such as a binary name. Static review alone does
+not reveal how much coverage that dependency costs; execution does.
 
-So this repo asks one narrow question with a checkable answer: given one
-technique performed seven ways, how many published rules fire on each?
-
-## Why this technique and this corpus
-
-T1003.001 gets the depth because of an accident of public data.
-OTRF/Security-Datasets contains seven recordings of LSASS memory theft carried
-out with seven different tools, in one lab, on one victim host, under one Sysmon
-configuration. The tool is the only variable across them, which makes them
-comparable in a way that assembled-from-elsewhere captures are not.
-
-| capture | events | tool |
-|---|---|---|
-| campaign 01 | 53,698 | logonpasswords, mimikatz-style in-process read |
-| campaign 02 | 42,482 | procdump, signed Sysinternals binary |
-| campaign 03 | 41,954 | comsvcs, rundll32 calling the MiniDump export |
-| campaign 04 | 40,568 | out-minidump, PowerShell reflective dump |
-| campaign 05 | 59,707 | sharpdump, .NET port of out-minidump |
-| campaign 06 | 58,096 | outflank-dumpert, direct syscalls |
-| campaign 07 | 57,724 | nanodump, syscalls and a hand-rolled writer |
-
-Every capture is a full recording window, so the events unrelated to the dump
-are real background activity rather than a curated slice.
-
-## The problem the architecture solves
-
-Three things can make a rule fail to fire, and only one of them is the rule's
-fault.
-
-1. The capture never recorded the field the rule reads.
-2. The rule targets a tool that was not run.
-3. The rule had everything it needed and did not match.
-
-A harness that cannot tell these apart produces a number that says more about
-the Sysmon configuration than about the detection content. Every design call
-below follows from needing to separate them, and from needing the separation to
-be checkable by someone who does not trust me.
-
-## Pipeline
-
-```mermaid
-flowchart LR 
-M[manifest.yml<br/>pinned commits, sha256,<br/>mutation targets] --> C[eval/corpus.py<br/>fetch, split] 
-M --> U[eval/mutate.py<br/>tiers + control] 
-C -->|attack captures| A[eval/runner.py<br/>compile + match] 
-C -->|benign captures| A 
-S[SigmaHQ rules<br/>pinned] --> A 
-U --> P[eval/prescreen.py<br/>drop what cannot match] 
-P --> A 
-A --> K[eval/classify.py<br/>why it missed] 
-A --> L[eval/selection.py<br/>populations x tiers] 
-K --> R[eval/report.py<br/>score + emit] 
-R --> O[results.json] 
-L --> N[selection.json] 
-N --> D[eval/sensitivity.py<br/>eval/robustness.py<br/>derived, not measured again] 
-A -. independent check .-> Z[eval/crosscheck.py<br/>Zircolite]
-
-```
-
-### benchmark/manifest.yml
-
-Pins every input. Source repositories by commit, and the seven campaign
-archives by sha256 as well. A rerun on another machine reads the same bytes or
-fails loudly.
-
-### eval/corpus.py
-
-Fetches the pinned sources with a blobless clone and a cone sparse-checkout,
-then splits captures into attack and benign sets.
-
-The contract that matters is benign eligibility, since it decides what counts
-as a false positive. A capture is benign for technique T when its metadata
-lists ATT&CK techniques, none of them is T, and none shares a parent technique
-with T. The sibling test keeps a T1003.002 capture from being scored against a
-T1003.001 rule.
-
-Captures with no ATT&CK mapping are dropped rather than assumed clean. Thirteen
-of the 122 Windows host captures are unlabelled and one of those is an LSASS
-dump variant, which is the whole argument for the rule. For T1003.001 that
-leaves 91 captures and 514,202 events.
-
-### eval/runner.py
-
-Parses rules with pySigma and compiles their condition trees into predicates,
-then runs them against event dictionaries. Nothing is converted to a query
-language.
-
-That is the central design call. Routing every rule through a third-party
-Sigma-to-SQL backend would fold that backend's coverage gaps into results
-published under the rules' name. Owning the matching means owning the risk of
-getting it wrong, which is why the semantics are pinned by tests and checked
-against another engine.
-
-Every rule runs through the `sysmon` and `windows-logsources` pipelines
-chained, so a `process_access` rule gets its EventID 10 and a Security rule
-gets its Channel. No rule is judged after being run through a pipeline it did
-not ask for.
-
-### eval/classify.py
-
-Decides why a rule did not fire. Each rule and capture pair lands in one of
-four states.
-
-| class | meaning |
-|---|---|
-| `detected` | matched at least one event |
-| `miss-telemetry` | the capture lacks the event type or a field the rule requires |
-| `out-of-scope` | the rule is keyed to a named binary the capture never ran |
-| `miss-logic` | everything the rule needs was present and it still did not match |
-
-Only requirements on the AND spine of a condition count. A field appearing
-solely inside a filter cannot explain a miss, because the filter simply does not
-apply. Getting this wrong is not hypothetical: an earlier version counted
-filter-only fields and put a rule in `miss-telemetry` over `Provider_Name`,
-which that rule only used to exclude events.
-
-For `out-of-scope`, a requirement counts as tool identity when every field in it
-names a binary. Access masks and call traces are excluded on purpose, since
-failing to match those is the detection logic falling short.
-
-### eval/report.py
-
-Selects rules for a technique, scores them, measures false positives against
-the benign corpus and emits `results.json` plus a markdown table. Every number
-in this README comes from that json. `--check` re-runs the benchmark and fails
-when the committed results have drifted, which is what CI runs.
-
-The headline is per tool rather than per rule. Scoring a rule needs a decision
-about whether a procdump-specific rule ought to catch nanodump, and no
-mechanical criterion settles that cleanly. Counting how many rules stand between
-an operator and a given tool needs no such decision. Both numbers are in the
-json; only the unarguable one leads.
-
-Rules from this repo are counted separately from published ones, because they
-were written after reading these results.
-
-### eval/mutate.py
-
-Replays a capture as the same intrusion carried out with more care: the
-artifacts the operator brought get names the operator chose, then move, then lose
-their version resource, then lose their recorded fingerprints. Which fields a
-tier may rewrite follows from where their values come from rather than from a
-list, and nothing the operating system reported about behaviour is ever
-rewritten.
-
-Beside the ladder, and not a rung of it, sits the control. It rewrites one field
-no selected rule reads, and coverage after it has to be identical to the
-baseline. If it is not, this harness is damaging events rather than the rules
-being fragile, and the run refuses to write its output.
-
-### eval/prescreen.py
-
-Drops rules that cannot match a capture, so the wide population is tractable in
-pure python. Three-valued and sound in one direction only: a rule is excluded on
-proven impossibility and everything else is admitted, including every construct
-the module will not reason about. The cheap half of the soundness argument runs
-on every commit, the exhaustive half at release.
-
-### eval/selection.py
-
-The one expensive pass. Three published rule populations, plus this repository's
-own, over the same seven captures, the same tiers and the same control. Coverage
-is credited only on events naming an artifact the operator brought or wrote,
-because a capture is a full recording window and most of it is background.
-`benchmark/sensitivity.json` and `benchmark/robustness.json` are derived from
-what it wrote rather than measured again, which is what stops two published
-tables from disagreeing about what coverage means.
-
-### eval/crosscheck.py
-
-The cross-check against an engine I did not write. The same rules and captures
-go through Zircolite, which converts Sigma to SQL and queries SQLite. Across
-seven campaigns and 23 `process_access` rules the two agree on which rules fire
-and on how many events each matches, with no disagreements.
-
-That comparison is what lets the benchmark claim a miss belongs to the rule. It
-covers the `process_access` rule set, not all 83 selected rules.
+The repository therefore asks one narrow, reproducible question: when one
+technique is performed seven ways, how many published rules fire on each?
 
 ## What it found
 
-80 published rules select for T1003.001, 79 by ATT&CK tag and 1 by logsource.
+The benchmark selects 80 published rules for T1003.001: 79 by ATT&CK tag and one
+by log source.
 
 | tool | published rules firing | including this repo |
 |---|---|---|
@@ -243,29 +78,28 @@ covers the `process_access` rule set, not all 83 selected rules.
 | sharpdump | 3 | 4 |
 | nanodump | 3 | 4 |
 
-Of 581 rule and capture pairs, 44 detected, 207 were logic misses, 273 out of
-scope, and 57 were telemetry gaps.
+Across 581 rule-capture pairs, 44 were detected, 207 were logic misses, 273 were
+out of scope, and 57 had telemetry gaps.
 
-The misses share three shapes.
+The misses fall into three patterns.
 
-**Detections keyed to strings the operator picks.** All three of nanodump's
-detections matched on the literal `dump`: in the image name
+**Detections keyed to operator-controlled strings.** All three nanodump
+detections match the literal `dump`: in the image name
 (`nanodump.x64.exe`), in the output filename (`lsass_dump.dmp`), and in the
-command line carrying that filename. Rename both and its published coverage goes
-to zero. sharpdump is close behind, with two of three needing `dump` in the
-image name.
+command line containing that filename. Renaming the executable and output file
+reduces its published coverage to zero. sharpdump is close behind: two of its
+three detections require `dump` in the image name.
 
-**Access masks removed as too noisy.** nanodump opened LSASS with
+**Access masks excluded as too noisy.** nanodump opened LSASS with
 `GrantedAccess` `0x1010`, and `0x1010`, `0x1400` and `0x1410` are all commented
 out of the two main process-access mask rules. That is a trade the rule authors
-made knowingly, and it costs nanodump and the in-process mimikatz read, which are
-the tools using the removed masks. The Security-channel rule for the same
-sub-technique still selects on `0x1010`, so the repository treats the same mask
-two ways;
+made knowingly. It costs coverage for nanodump and the in-process mimikatz read,
+which use the removed masks. A Security-channel rule for the same sub-technique
+still selects on `0x1010`, so the repository treats the same mask in two ways;
 [contrib/lsass-access-mask-exclusions.md](contrib/lsass-access-mask-exclusions.md)
 has the counts.
 
-**A directory filter the tools walk through.** `Potentially Suspicious
+**Directory filters that exclude the tools.** `Potentially Suspicious
 GrantedAccess Flags On LSASS` drops every source under `Program Files`,
 `System32` and `SysWOW64`. In these captures procdump ran from
 `C:\Program Files\procdump64.exe`, SharpDump from
@@ -274,12 +108,16 @@ GrantedAccess Flags On LSASS` drops every source under `Program Files`,
 
 ## What survives a rename
 
-The coverage above is measured against the names these operators happened to
-pick, which makes it an upper bound. Every capture was replayed through five
-tiers of adversary effort, each a superset of the one below: rename what the
-operator brought, move it into a directory the mask rules exclude, clear the PE
-version resource, rotate the recorded fingerprints. Nothing the operating system
-reported about behaviour is rewritten at any tier.
+The baseline coverage reflects the names used in these captures and is therefore
+an upper bound. The benchmark replays every capture through five cumulative
+tiers of adversary effort: rename operator-provided artifacts, relocate them to
+a directory excluded by the access-mask rules, clear the PE version resource,
+and rotate recorded fingerprints. No tier rewrites behavior reported by the
+operating system.
+
+![Published detections surviving operator changes](docs/figures/mutation-ladder.svg)
+
+<sub>Published rule/capture detections: T0 35, T1 23, T2–T4 15; nanodump 3 → 0 at T1. Generated from <code>benchmark/sensitivity.json</code>, <code>per_capture → tiers → published_firing</code>.</sub>
 
 | tool | T0 | T1 rename | T2 relocate | T3 strip-pe | T4 new identity |
 |---|---|---|---|---|---|
@@ -291,52 +129,29 @@ reported about behaviour is rewritten at any tier.
 | sharpdump | 3 | 2 | 2 | 2 | 2 |
 | nanodump | 3 | 0 | 0 | 0 | 0 |
 
-Relocation costs the access-mask rules, which read no filename at all. They are
-lost to their own filters, the ones excluding every source under `Program Files`,
-`System32` and `SysWOW64`. logonpasswords shows that alone: it reads LSASS from
-an injected thread, so the rename costs it nothing and the move costs it two of
-three.
+Relocation defeats the access-mask rules even though they read no filename. Their
+own filters exclude every source under `Program Files`, `System32`, and
+`SysWOW64`. logonpasswords isolates this effect: it reads LSASS from an injected
+thread, so renaming changes nothing while relocation removes two of its three
+detections.
 
-Clearing the version resource and rotating the fingerprints move nothing here.
-That is not because those tiers do nothing, but because the layer that reads a
-version resource or a fingerprint to catch a renamed tool is not in the
-population being measured.
+Clearing the version resource and rotating fingerprints do not change coverage
+in this population. Rules that use those attributes to identify renamed tools
+fall outside the measured set.
 
-Beside the ladder, and not a rung of it, a control rewrites a field no rule in
-the technique-scoped selection reads. It moves nothing there, on all seven captures. It does move
-one rule in the wide population, which reads the field it rewrites, and that is
-what makes it a control rather than a formality: a mutation nothing can see
-passes by construction.
+A separate control rewrites a field that no rule in the technique-scoped
+selection reads. Coverage remains unchanged across all seven captures. In the
+wider population, it changes one rule that does read the field, confirming that
+the control is observable where expected.
 
-This measures sensitivity to renaming and relocation on one corpus, with a model
-of an operator rather than a recording of one. Someone who changes how the tool
-reads memory, rather than what it is called, is outside what any of it shows.
-
-## Coverage depends on which rules you selected
-
-Everything above is scoped to the rules carrying `attack.t1003.001`. That scoping
-is not neutral. Three populations run over the same captures and tiers: the
-tag-only set, the augmented set the benchmark scores, and every SigmaHQ rule that
-compiles, is `product: windows` or product-agnostic, and reads an event type the
-corpus contains. Coverage is credited only on events naming an artifact the
-operator brought or wrote, because a capture is a full recording window and 98%
-of it is background.
-
-| tool | `S-tag` T0 | `S-tag` T1 | `W` T0 | `W` T1 | what `W` adds at T1 |
-|---|---|---|---|---|---|
-| procdump | 7 | 3 | 14 | 13 | Renamed ProcDump Execution, and two rules reading the Sysinternals registry key |
-| outflank-dumpert | 5 | 3 | 14 | 12 | a rule keyed on the tool's import hash, lost only at T4 |
-| nanodump | 3 | 0 | 12 | 9 | nothing about credential access |
-
-The full table, and every rule in the compensating layer by name, is in
-[benchmark/selection.md](benchmark/selection.md). The rules in `rules/` are a
-fourth population, reported apart from all three, because they were written after
-reading the results above.
+This experiment measures sensitivity to renaming and relocation on one corpus
+using a model of operator behavior. It does not cover changes to how a tool reads
+memory.
 
 ## Authored rules
 
-Six rules in `rules/`, each measured against the captures and against a benign
-corpus scoped to its own technique.
+The six rules in `rules/` are each evaluated against the attack captures and a
+benign corpus scoped to the rule's technique.
 
 | rule | technique | detects | fp/100k |
 |---|---|---|---|
@@ -347,91 +162,25 @@ corpus scoped to its own technique.
 | LSASS Dump Via Comsvcs MiniDump Export | T1003.001 | 1/7 | 0.00 |
 | PowerShell Script Block Calling MiniDumpWriteDump | T1003.001 | 1/7 | 0.00 |
 
-The LSASS rule keys on the caller rather than on names the operator controls,
-and its filters pin a binary to its expected directory instead of excluding
-directories wholesale. It detects 7 of 7 with 8 false positives in 514,202
-benign events, of which 6 are one Azure guest agent and 2 are PowerShell.
-PowerShell is left unfiltered because Out-Minidump is PowerShell.
+The LSASS rule keys on the caller rather than operator-controlled names. Its
+filters bind a binary to its expected directory instead of excluding entire
+directories. It detects 7/7 captures with eight false positives in 514,202
+benign events: six from one Azure guest agent and two from PowerShell. PowerShell
+remains unfiltered because Out-Minidump runs through PowerShell.
 
-The low counts are the corpus rather than the rules. Only three of the seven
+The lower detection counts reflect the corpus: only three of the seven
 intrusions inject into another process, and only one uses comsvcs.
 
 ## Does any of it transfer
 
-The whole set was pointed at the APT29 evaluation captures, 783,367 events
-across two days and several hosts, which none of these rules was written for.
-Three of the six fire on both days with no tuning. The three that stay quiet are
-the narrow ones, none of which describes how that intrusion moved.
+The transfer test runs all six rules against APT29 evaluation captures containing
+783,367 events across two days and several hosts. None of the rules was written
+for this dataset. Three fire on both days without tuning; the three narrower
+rules remain quiet because their behaviors do not describe the intrusion.
 
-That is a transfer test and one more dataset, not a deployment, and nothing here
-reconstructs the intrusion's steps. `docs/decisions.md` says why the module doing
-it is no longer called a chain.
-
-## What was offered upstream
-
-Three drafts in [`contrib/`](contrib), in ascending order of how arguable they
-are, none of them sent anywhere. One encoding defect: `HackTool - Dumpert Process
-Dumper Execution` reads an import hash as an MD5 and therefore cannot fire on the
-tool it is named after, which is measured before and after the one-line
-correction. One tuning tradeoff: the access-mask exclusions are a documented
-choice, and the measurement offered is about one mask that three rules in the
-same repository already treat two different ways. One proposal: the rule that
-catches a renamed ProcDump is correctly tagged for masquerading, and the problem
-is that nothing connects it to the credential-dumping rules it complements.
-
-## Where the rules run
-
-Each rule is converted to Splunk SPL and to Kusto, the query language Sentinel
-and Defender XDR use, and both are committed under
-[`rules/converted/`](rules/converted) so the generated query is readable in a
-diff rather than only inside a CI step. `scripts/convert_rules.py --check`
-fails when they drift from a fresh conversion.
-
-Conversion is not deployment. It says the detection logic expresses cleanly in
-each query language, nothing about field availability, licensing or tuning in
-any particular estate. The measurements in this repo were made by the harness
-in `eval/`, not by either SIEM.
-
-## Individual commands
-
-The Quickstart above is the shortest reviewer path. The harness writes a durable
-progress record instead of relying on an animated terminal spinner, so the same
-signal remains readable in a terminal, redirected log, or CI transcript. Every
-stage shows its position, exact command, live stdout/stderr, pass/fail state,
-and elapsed time. Long or quiet stages also emit a `LIVE` heartbeat every 15
-seconds:
-
-```text
-[----------------------------]   0% | READY | pipeline initialized
-[----------------------------]   0% | RUN   | 1/4 job tests (no corpus, as CI sees it)
-[#######---------------------]  25% | PASS  | job tests (no corpus, as CI sees it)
-[##############--------------]  50% | PASS  | job rules: seed taxonomy cache
-[##############--------------]  50% | LIVE  | 3/4 job rules: sigma check (15s elapsed)
-[#####################-------]  75% | PASS  | job rules: sigma check
-[############################] 100% | PASS  | pipeline complete
-  summary: 4 passed, 0 failed
-```
-
-Use `--fast` for the first proof of life. The default mode adds the pinned
-roughly 1.5 GB corpus and benchmark drift checks; `--release` also runs the
-wide population and exhaustive prescreen checks.
-
-```bash
-python -m eval.corpus --fetch          # about 1.5 GB, pinned by commit and sha256
-python -m eval.report --run            # benchmark/results.json and results.md
-python -m eval.transfer --run          # benchmark/chain.json and chain.md
-python -m eval.crosscheck              # agreement against Zircolite
-python -m pytest tests -q              # unit tests, no corpus needed
-
-# the one expensive pass, and the two records derived from it
-python -m eval.report --run-selection    # benchmark/selection.json and .md
-python -m eval.report --run-sensitivity  # benchmark/sensitivity.json and .md
-python -m eval.report --run-robustness   # benchmark/robustness.json and .md
-
-scripts/ci-local.sh --fast             # what a push runs, minus the corpus
-scripts/ci-local.sh                    # add the corpus and drift checks
-scripts/ci-local.sh --release          # add the wide run and exhaustive prescreen
-```
+This result covers one transfer dataset, not a deployment, and the evaluation
+does not reconstruct the intrusion's steps. [docs/decisions.md](docs/decisions.md)
+explains why the corresponding module is no longer called a chain.
 
 ## Limitations
 
@@ -449,6 +198,19 @@ these seven captures can show, and a rule that misses here may be carrying its
 weight somewhere this corpus cannot see. Full limitations in
 [docs/method.md](docs/method.md).
 
+
+## Related work in this portfolio
+
+Memory forensics → detection engineering → evaluation of AI in security operations.
+
+| Repository | What it establishes |
+| --- | --- |
+| [VolMemLyzer3](https://github.com/YaCnDehfuli/VolMemLyzer3-CLI_forensic_tool) | Volatility 3 orchestration and feature extraction; 2.4× parallel speedup on a pinned 10-plugin set |
+| [VADViT](https://github.com/YaCnDehfuli/VADViT) | Published ViT classification of process memory — 99.2% binary accuracy, 92% macro-F1 |
+| [MalGraph](https://github.com/YaCnDehfuli/MalGraph) | Why memory-time recovery matters: UPX packing leaves 5.4% of functions statically recoverable |
+| [MemTriage](https://github.com/YaCnDehfuli/MemTriage) | The analyst workspace that consumes both |
+| **detection-under-load** | Published Sigma coverage for T1003.001 collapses under operator-controlled renaming |
+| [agent-under-load](https://github.com/YaCnDehfuli/agent-under-load) | Whether an LLM agent can triage those detections, measured against deterministic ground truth |
 
 ## License
 
