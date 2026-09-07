@@ -21,6 +21,8 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt pyyaml
       - run: python -m pytest tests -q
+      - name: report and figures must match committed data
+        run: python docs/generate_report.py --check
 
   rules:
     runs-on: ubuntu-latest
