@@ -13,7 +13,7 @@ references:
     - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
     - https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound
 author: Yasin Dehfuli
-date: 2026/07/02
+date: 2026-07-02
 tags:
     - attack.credential-access
     - attack.t1003.001

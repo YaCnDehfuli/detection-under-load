@@ -9,7 +9,7 @@ description: |
 references:
     - https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound
 author: Yasin Dehfuli
-date: 2026/07/08
+date: 2026-07-08
 tags:
     - attack.execution
     - attack.t1204.002

@@ -11,7 +11,7 @@ description: |
 references:
     - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4703
 author: Yasin Dehfuli
-date: 2026/07/08
+date: 2026-07-08
 tags:
     - attack.privilege-escalation
     - attack.t1134.001

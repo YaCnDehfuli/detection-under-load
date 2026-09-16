@@ -10,7 +10,7 @@ description: |
 references:
     - https://github.com/PowerShellMafia/PowerSploit
 author: Yasin Dehfuli
-date: 2026/07/08
+date: 2026-07-08
 tags:
     - attack.credential-access
     - attack.execution

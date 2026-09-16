@@ -10,7 +10,7 @@ description: |
 references:
     - https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
 author: Yasin Dehfuli
-date: 2026/07/08
+date: 2026-07-08
 tags:
     # ATT&CK renamed TA0005 to Stealth, so defense-evasion is no longer a
     # valid tactic tag. T1055.002 maps to stealth and privilege-escalation.
