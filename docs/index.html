@@ -1,30 +1,560 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Detection Under Load — Sigma coverage under operator changes</title>
-<meta name="description" content="A reproducible study of published Sigma coverage, miss taxonomy, operator-controlled renaming and transfer to APT29 captures.">
-<link rel="stylesheet" href="report.css"></head><body><main>
-<header><p class="eyebrow">Detection engineering · Research report · ATT&amp;CK T1003.001</p>
-<h1>What survives<br>a renamed dumping tool?</h1>
-<p class="abstract">80 published Sigma rules were tested against 7 LSASS-dump captures containing 354,229 events. Renaming operator-controlled artifacts removes 12 of 35 published rule/capture detections; relocation removes 8 more. Distinguishing missing telemetry from logic failures makes those coverage losses interpretable.</p>
-<p class="byline">Yasin Dehfouli · <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/README.md">Repository and quickstart</a></p></header>
-<section><h2>Method</h2><p>The seven captures share one lab, victim host and Sysmon configuration. Source commits and archive digests pin the input bytes. The native harness compiles Sigma conditions and applies the Sysmon and Windows logsource pipelines; the independent engine check below tests agreement.</p>
-<div class="table"><table><thead><tr><th>Input repository</th><th>Pinned commit</th></tr></thead><tbody><tr><td>security_datasets</td><td>d9d40ef123d2c87d5d3df28c96bcab4f0faccc87</td></tr><tr><td>sigmahq</td><td>1aacbedf7fc04067e6b1b2594c4b7c1c2ff649a9</td></tr></tbody></table></div><details><summary>Capture archive SHA-256 pins</summary><div class="table"><table><thead><tr><th>Capture</th><th>Tool</th><th>SHA-256 of archive</th></tr></thead><tbody><tr><td>LSASS_campaign_01</td><td>logonpasswords</td><td>79045fcc5a8689efed8db4911cadc11b554ef8b0bed1428ee490bb8c3f2578e6</td></tr><tr><td>LSASS_campaign_02</td><td>procdump</td><td>2b32f11b1465f49df8bb4040652b001e4bb8a92de6ae7e84c2977abe68273f04</td></tr><tr><td>LSASS_campaign_03</td><td>comsvcs</td><td>97a834cd72b0803d544c62cc45a41b18a4cc04a605735096be4bc5dad5e9fe7b</td></tr><tr><td>LSASS_campaign_04</td><td>out-minidump</td><td>d6150eab4013ed0a7fc9c6b7266187214706c543c9dc3a370603f524def5de63</td></tr><tr><td>LSASS_campaign_05</td><td>sharpdump</td><td>79e347b411beefaf5c7d0c951fdcb9d308fce20f8eabe666c11fa7b6165053b8</td></tr><tr><td>LSASS_campaign_06</td><td>outflank-dumpert</td><td>ee996c0ddc32611c572f59a68869f7d4327aaac04a3aeee65916b7221347dc1d</td></tr><tr><td>LSASS_campaign_07</td><td>nanodump</td><td>5335635ef2bce0fb3f8704e17fb04a3be7400ac7c4bcd6ec7c14454632acaaaf</td></tr></tbody></table></div></details>
-<div class="method-grid"><div><h3>Cumulative mutation ladder</h3><ol><li>T0: recorded baseline.</li><li>T1: rename artifacts the operator brought.</li><li>T2: relocate those artifacts.</li><li>T3: clear PE version resources.</li><li>T4: rotate recorded artifact fingerprints.</li></ol></div>
-<aside><h3>Control, beside the ladder</h3><p>The control rewrites <code>CurrentDirectory</code>, which no rule in the technique-scoped selection reads. The committed record shows 0 firing or credit changes in this selection across 7 captures. A wide-population rule does read the field; its response is recorded separately. The control is not a mutation rung.</p></aside></div>
-<p>Behaviour reported by the operating system is not rewritten. “Benign” eligibility excludes captures with the target technique or its siblings and drops captures with no ATT&amp;CK mapping. These are non-target attack simulations, not a measured clean production baseline.</p><p class="source">Sources: <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/benchmark/manifest.yml">benchmark/manifest.yml</a>, <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/docs/method.md">docs/method.md</a>, <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/benchmark/selection.json">benchmark/selection.json</a>.</p></section>
-<section><h2>Coverage results</h2><p>The augmented run has 83 rules: 80 published externally and 3 authored here. Its 581 rule/capture pairs separate what the data cannot show from what the rules fail to match.</p>
-<figure><img src="figures/coverage-report.svg" alt="Counts of the four rule/capture outcomes"><figcaption><a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/benchmark/results.json">benchmark/results.json</a>: augmented rule population, all capture pairs.</figcaption></figure>
-<div class="table"><table><thead><tr><th>Outcome</th><th>Pairs</th><th>Interpretation</th></tr></thead><tbody><tr><td>Detected</td><td>44</td><td>At least one event matched.</td></tr><tr><td>Logic miss</td><td>207</td><td>Required telemetry was present, but the rule did not match.</td></tr><tr><td>Out of scope</td><td>273</td><td>The rule required a named tool that was not used.</td></tr><tr><td>Telemetry gap</td><td>57</td><td>The recording lacks an event type or required field.</td></tr></tbody></table></div><p>A telemetry gap is not charged as a logic miss. An out-of-scope rule is not evidence that a relevant detector failed. This distinction is the basis for investigating the remaining logic failures.</p></section>
-<section><h2>Robustness results</h2><p>This ladder counts published rules firing in each capture in the <code>S-aug</code> selection. Authored rules are excluded. Intrusion-linked credited matches are a separate reading in the source data; the headline here uses firing counts throughout.</p>
-<figure><img src="figures/mutation-ladder.svg" alt="Published rule/capture detections surviving five mutation tiers"><figcaption><a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/benchmark/sensitivity.json">benchmark/sensitivity.json</a>: per_capture → tiers → published_firing. nanodump is annotated directly.</figcaption></figure>
-<div class="table"><table><thead><tr><th>Tool</th><th>T0 Baseline</th><th>T1 Rename</th><th>T2 Relocate</th><th>T3 Strip PE data</th><th>T4 Rotate identity</th></tr></thead><tbody><tr><td>logonpasswords</td><td>3</td><td>3</td><td>1</td><td>1</td><td>1</td></tr><tr><td>procdump</td><td>7</td><td>3</td><td>3</td><td>3</td><td>3</td></tr><tr><td>comsvcs</td><td>6</td><td>5</td><td>4</td><td>4</td><td>4</td></tr><tr><td>out-minidump</td><td>8</td><td>7</td><td>4</td><td>4</td><td>4</td></tr><tr><td>sharpdump</td><td>3</td><td>2</td><td>2</td><td>2</td><td>2</td></tr><tr><td>outflank-dumpert</td><td>5</td><td>3</td><td>1</td><td>1</td><td>1</td></tr><tr><td>nanodump</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td></tr></tbody></table></div><p>Relocation suppresses rules through directory exclusions. T3 and T4 cause no additional loss in this selected population; that does not establish immunity to changing version resources or fingerprints in other rule populations. The broader selection and its compensating rules are documented in <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/benchmark/selection.md">benchmark/selection.md</a>.</p></section>
-<section><h2>Authored rules</h2><p>6 authored rules were evaluated separately, after inspecting the coverage failures. Each non-target rate uses the corpus eligible for that rule's own technique. The PowerShell rule also carries T1059.001 and requires script-block logging; its scored detection scope here is T1003.001.</p>
-<div class="table"><table><thead><tr><th>Authored rule</th><th>Technique scope</th><th>LSASS captures hit</th><th>Non-target fires</th><th>Events</th><th>Fires / 100k</th></tr></thead><tbody><tr><td>LSASS Handle Request From Unexpected Process</td><td>T1003.001</td><td>7/7</td><td>8</td><td>514,202</td><td>1.556</td></tr><tr><td>SeDebugPrivilege Enabled On A Token</td><td>T1134.001</td><td>4/7</td><td>9</td><td>608,813</td><td>1.478</td></tr><tr><td>Remote Thread Started From Unbacked Memory</td><td>T1055.002</td><td>3/7</td><td>6</td><td>589,112</td><td>1.018</td></tr><tr><td>Process Started From A User Download Directory</td><td>T1204.002</td><td>7/7</td><td>6</td><td>608,813</td><td>0.986</td></tr><tr><td>PowerShell Script Block Calling MiniDumpWriteDump</td><td>T1003.001</td><td>1/7</td><td>0</td><td>514,202</td><td>0.0</td></tr><tr><td>LSASS Dump Via Comsvcs MiniDump Export</td><td>T1003.001</td><td>1/7</td><td>0</td><td>514,202</td><td>0.0</td></tr></tbody></table></div><figure><img src="figures/authored-rates.svg" alt="Each authored rule’s non-target fire rate"><figcaption><a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/benchmark/chain.json">benchmark/chain.json</a>: benign → fires, events and per_100k; exact committed rates shown.</figcaption></figure>
-<p>Low rates on these quiet captures do not establish production false-positive rates or permit fine-grained ranking of the rules. The LSASS caller rule's eight non-target fires include six Azure guest-agent events and two PowerShell events; PowerShell remains unfiltered because Out-Minidump uses it.</p><p class="source">Definitions: <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/rules/">authored Sigma rules</a>. <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/docs/reference.md#where-the-rules-run">Converted SPL and Kusto queries</a> express the logic; conversion is not deployment.</p></section>
-<section><h2>Cross-validation</h2><p>Zircolite was used as an independent check across 7 campaigns and the documented 23 <code>process_access</code> rules. The committed comparison has 0 harness-only results, Zircolite-only results or count mismatches in total. Agreement covers this evaluated subset, not every Sigma feature.</p>
-<div class="table"><table><thead><tr><th>Campaign tool</th><th>Harness-only</th><th>Zircolite-only</th><th>Count mismatches</th></tr></thead><tbody><tr><td>logonpasswords</td><td>0</td><td>0</td><td>0</td></tr><tr><td>procdump</td><td>0</td><td>0</td><td>0</td></tr><tr><td>comsvcs</td><td>0</td><td>0</td><td>0</td></tr><tr><td>out-minidump</td><td>0</td><td>0</td><td>0</td></tr><tr><td>sharpdump</td><td>0</td><td>0</td><td>0</td></tr><tr><td>outflank-dumpert</td><td>0</td><td>0</td><td>0</td></tr><tr><td>nanodump</td><td>0</td><td>0</td><td>0</td></tr></tbody></table></div><p class="source"><a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/benchmark/crosscheck.json">benchmark/crosscheck.json</a>; procedure and rule scope in <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/docs/reference.md#evalcrosscheckpy">the evaluator reference</a>.</p></section>
-<section><h2>Transfer test</h2><p>The same authored rules were applied without tuning to 783,367 APT29 events across two days and several hosts. 3 of 6 rules fire on both days. The table reports matching events, not reconstructed intrusion steps.</p>
-<div class="table"><table><thead><tr><th>Authored rule</th><th>apt29_day1</th><th>apt29_day2</th></tr></thead><tbody><tr><td>LSASS Handle Request From Unexpected Process</td><td>2</td><td>2</td></tr><tr><td>SeDebugPrivilege Enabled On A Token</td><td>1</td><td>2</td></tr><tr><td>Remote Thread Started From Unbacked Memory</td><td>2</td><td>2</td></tr><tr><td>Process Started From A User Download Directory</td><td>0</td><td>0</td></tr><tr><td>PowerShell Script Block Calling MiniDumpWriteDump</td><td>0</td><td>0</td></tr><tr><td>LSASS Dump Via Comsvcs MiniDump Export</td><td>0</td><td>0</td></tr></tbody></table></div><p>This is a transfer test on another dataset. It does not establish a deployment result or end-to-end intrusion reconstruction.</p><p class="source"><a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/benchmark/chain.json">benchmark/chain.json</a>: intrusion. Day 1 has 196,081 events; day 2 has 587,286.</p></section>
-<section><h2>Limitations</h2><p>Seven tools is seven tools, and one lab is one lab. The tiers are a model of an operator rather than a recording of one, and everything the model refuses to rewrite makes the measured loss smaller than it would otherwise look. A field missing from a capture is not proof it would be missing in production, which is why telemetry gaps are separated from logic misses instead of counted against the rules. The benign corpus is 91 atomic attack simulations, real host telemetry but a quiet one: 514,202 events separates a rule that fires a handful of times from one that fires constantly, and it does not support comparing 0.1 against 0.3 per 100k.</p><p>None of this is a verdict on SigmaHQ. Their rules cover far more ground than these seven captures can show, and a rule that misses here may be carrying its weight somewhere this corpus cannot see. Full limitations in docs/method.md (https://github.com/YaCnDehfuli/detection-under-load/blob/main/docs/method.md).</p></section>
-<footer><p><a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/docs/reference.md">Pipeline and command reference</a> · <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/docs/decisions.md">Design decisions</a> · <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/LICENSE">MIT license</a></p><p>Figures and report tables are generated from committed results by <code>docs/generate_report.py</code>; CI checks for drift. No research result was remeasured to build this page.</p></footer>
-</main></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Detection Under Load — Research Report</title>
+<meta name="description" content="A reproducible evaluation of Sigma detection robustness for LSASS credential dumping under operator-controlled changes.">
+<style>
+:root{
+  --ink:#17212b;
+  --muted:#5f6b76;
+  --line:#dfe4e8;
+  --surface:#f6f8fa;
+  --paper:#fff;
+  --blue:#195f7f;
+  --blue2:#2d7899;
+  --green:#356b51;
+  --orange:#a15f31;
+  --purple:#746388;
+  --red:#963f3b;
+  --shadow:0 14px 40px rgba(25,35,45,.07);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:#eef1f3;
+  color:var(--ink);
+  font-family:Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height:1.58;
+}
+a{color:var(--blue);text-decoration-thickness:1px;text-underline-offset:3px}
+.shell{
+  max-width:1180px;
+  margin:32px auto;
+  background:var(--paper);
+  box-shadow:var(--shadow);
+}
+.topbar{
+  position:sticky;top:0;z-index:10;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  padding:14px 48px;
+  border-bottom:1px solid var(--line);
+  background:rgba(255,255,255,.96);
+  backdrop-filter:blur(8px);
+}
+.brand{font-weight:750;letter-spacing:-.02em}
+.nav{display:flex;flex-wrap:wrap;gap:18px;font-size:.88rem}
+.nav a{text-decoration:none;color:#3e4a55}
+.hero{
+  padding:72px 72px 46px;
+  border-bottom:1px solid var(--line);
+}
+.eyebrow{
+  margin:0 0 18px;
+  color:var(--blue);
+  font-size:.78rem;
+  font-weight:700;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+h1{
+  max-width:950px;
+  margin:0;
+  font-size:clamp(3rem,7vw,5.8rem);
+  line-height:.98;
+  letter-spacing:-.055em;
+  font-weight:800;
+}
+.deck{
+  max-width:860px;
+  margin:28px 0 0;
+  color:#3c4853;
+  font-size:1.24rem;
+  line-height:1.55;
+}
+.meta{
+  margin-top:26px;
+  display:flex;flex-wrap:wrap;gap:14px 22px;
+  color:var(--muted);font-size:.91rem;
+}
+.metric-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border-bottom:1px solid var(--line);
+}
+.metric{
+  min-height:142px;
+  padding:28px 30px;
+  border-right:1px solid var(--line);
+}
+.metric:last-child{border-right:none}
+.metric strong{
+  display:block;
+  font-size:2.35rem;
+  line-height:1;
+  letter-spacing:-.04em;
+  font-variant-numeric:tabular-nums;
+}
+.metric span{display:block;margin-top:12px;color:var(--muted);font-size:.92rem}
+section{
+  padding:58px 72px;
+  border-bottom:1px solid var(--line);
+}
+.section-kicker{
+  margin:0 0 8px;
+  color:var(--blue);
+  font-size:.76rem;
+  font-weight:750;
+  text-transform:uppercase;
+  letter-spacing:.11em;
+}
+h2{
+  margin:0 0 18px;
+  font-size:2rem;
+  letter-spacing:-.035em;
+  line-height:1.15;
+}
+h3{margin:0 0 10px;font-size:1.03rem}
+.lead{
+  max-width:850px;
+  color:#3f4c57;
+  font-size:1.05rem;
+  margin:0 0 30px;
+}
+.callout{
+  margin:28px 0;
+  padding:22px 26px;
+  border-left:4px solid var(--blue);
+  background:var(--surface);
+}
+.callout strong{font-size:1.13rem}
+.arch{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:10px;
+  margin:32px 0 12px;
+  align-items:stretch;
+}
+.node{
+  min-height:112px;
+  padding:16px 12px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  text-align:center;
+  background:#fff;
+}
+.node b{font-size:.91rem}
+.node span{font-size:.77rem;color:var(--muted);margin-top:5px}
+.arrow{display:none}
+.note{color:var(--muted);font-size:.88rem}
+.two{
+  display:grid;
+  grid-template-columns:1.2fr .8fr;
+  gap:34px;
+}
+.chart-card,.panel{
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:#fff;
+  padding:24px;
+}
+.chart-title{font-weight:700;margin-bottom:8px}
+.chart-sub{font-size:.86rem;color:var(--muted);margin-bottom:18px}
+.ladder{
+  display:flex;
+  align-items:flex-end;
+  gap:18px;
+  min-height:290px;
+  padding:18px 10px 0;
+  border-bottom:1px solid var(--line);
+}
+.bar-wrap{flex:1;text-align:center}
+.bar{
+  width:68%;
+  margin:0 auto;
+  background:var(--blue);
+  border-radius:4px 4px 0 0;
+  min-height:2px;
+}
+.bar.alt{background:#6c8796}
+.bar-value{font-weight:800;font-size:1.45rem;margin-bottom:8px}
+.bar-label{font-size:.78rem;color:var(--muted);margin-top:9px}
+.delta{
+  margin-top:18px;
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.delta div{padding:14px;background:var(--surface);border-radius:5px}
+.delta strong{display:block;font-size:1.2rem}
+.case-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:18px;
+}
+.case{
+  border:1px solid var(--line);
+  border-radius:7px;
+  padding:22px;
+}
+.case .num{
+  display:inline-flex;
+  width:28px;height:28px;border-radius:50%;
+  align-items:center;justify-content:center;
+  color:white;background:var(--ink);
+  font-size:.78rem;font-weight:700;margin-bottom:18px;
+}
+.case p{color:#4b5862;font-size:.92rem;margin-bottom:0}
+.taxonomy{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-top:24px;
+}
+.tax{
+  padding:20px;
+  border:1px solid var(--line);
+  border-top-width:4px;
+  border-radius:6px;
+}
+.tax strong{display:block;font-size:1.65rem}
+.tax span{font-size:.87rem;color:var(--muted)}
+.tax.detected{border-top-color:var(--green)}
+.tax.logic{border-top-color:var(--orange)}
+.tax.scope{border-top-color:var(--purple)}
+.tax.telemetry{border-top-color:var(--blue2)}
+.validation-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+}
+.validation{
+  padding:22px;border:1px solid var(--line);border-radius:7px;
+}
+.validation strong{display:block;font-size:1.55rem;letter-spacing:-.03em}
+.validation span{display:block;margin-top:7px;color:var(--muted);font-size:.89rem}
+.prbox{
+  display:grid;grid-template-columns:1.1fr .9fr;gap:28px;
+  padding:30px;border:1px solid #cbd8df;background:#f8fbfc;border-radius:8px;
+}
+.pr-status{
+  align-self:center;
+  padding:22px;border-left:3px solid var(--green);background:white;
+}
+.pr-status b{display:block;font-size:1.4rem}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{padding:13px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:.76rem;text-transform:uppercase;letter-spacing:.055em;color:var(--muted);background:var(--surface)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+details{border:1px solid var(--line);border-radius:6px;padding:14px 18px;background:#fff}
+summary{cursor:pointer;font-weight:700}
+.footer{
+  padding:36px 72px 54px;
+  color:var(--muted);
+  font-size:.86rem;
+}
+.links{display:flex;flex-wrap:wrap;gap:14px 18px;margin-top:14px}
+@media(max-width:900px){
+  .topbar{padding:14px 22px}.nav{display:none}
+  .hero,section,.footer{padding-left:26px;padding-right:26px}
+  .metric-grid{grid-template-columns:1fr 1fr}
+  .metric:nth-child(2){border-right:none}
+  .metric:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .arch{grid-template-columns:1fr 1fr}
+  .two,.prbox{grid-template-columns:1fr}
+  .case-grid,.validation-grid,.taxonomy{grid-template-columns:1fr 1fr}
+}
+@media(max-width:580px){
+  .shell{margin:0}.metric-grid,.case-grid,.validation-grid,.taxonomy{grid-template-columns:1fr}
+  .metric{border-right:none;border-bottom:1px solid var(--line)}
+  .arch{grid-template-columns:1fr}
+}
+@media print{
+  body{background:white}.shell{box-shadow:none;margin:0;max-width:none}
+  .topbar{position:static}.nav{display:none}
+  section{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="brand">Detection Under Load</div>
+    <nav class="nav">
+      <a href="#design">Study design</a>
+      <a href="#results">Results</a>
+      <a href="#failure-modes">Failure modes</a>
+      <a href="#validation">Validation</a>
+      <a href="#upstream">Upstream impact</a>
+      <a href="#scope">Scope</a>
+    </nav>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow">Detection engineering research · MITRE ATT&amp;CK T1003.001</p>
+    <h1>How much Sigma coverage survives a renamed dumping tool?</h1>
+    <p class="deck">
+      A reproducible evaluation of published Windows detections for LSASS credential dumping,
+      measured against seven recorded implementations and then stressed with operator-controlled
+      changes such as renaming and relocation.
+    </p>
+    <div class="meta">
+      <span>Yasin Dehfouli</span>
+      <span>Research artifact</span>
+      <span>September 2026</span>
+      <span><a href="https://github.com/YaCnDehfuli/detection-under-load">Repository</a></span>
+      <span><a href="https://github.com/SigmaHQ/sigma/pull/6300">SigmaHQ PR #6300</a></span>
+    </div>
+  </header>
+
+  <div class="metric-grid">
+    <div class="metric"><strong>80</strong><span>published Sigma rules evaluated</span></div>
+    <div class="metric"><strong>7</strong><span>recorded LSASS-dumping implementations</span></div>
+    <div class="metric"><strong>354,229</strong><span>attack events in the primary benchmark</span></div>
+    <div class="metric"><strong>35 → 15</strong><span>published rule/capture detections after rename + relocation</span></div>
+  </div>
+
+  <section>
+    <p class="section-kicker">Executive summary</p>
+    <h2>The main finding</h2>
+    <p class="lead">
+      Published detection coverage is materially sensitive to artifacts controlled by the operator.
+      Renaming alone removes 12 of 35 baseline rule/capture detections. Relocation removes eight more.
+      No additional loss is observed in this selected population when PE version metadata is cleared
+      or recorded fingerprints are rotated.
+    </p>
+    <div class="callout">
+      <strong>20 of 35 baseline detections disappear without changing the underlying LSASS-access behavior.</strong>
+      <div class="note">This is a result for the measured corpus and selected Sigma population, not a claim about all Sigma coverage.</div>
+    </div>
+  </section>
+
+  <section id="design">
+    <p class="section-kicker">Study design</p>
+    <h2>From public telemetry to reproducible coverage measurements</h2>
+    <p class="lead">
+      The benchmark pins both the Sigma rule corpus and input datasets, compiles rule logic, evaluates
+      each capture, applies cumulative operator changes, classifies misses, and then checks selected
+      results against an independent engine.
+    </p>
+
+    <div class="arch">
+      <div class="node"><b>Public telemetry</b><span>recorded Windows events</span></div>
+      <div class="node"><b>Pinned corpus</b><span>commit + archive hashes</span></div>
+      <div class="node"><b>Rule selection</b><span>ATT&amp;CK T1003.001</span></div>
+      <div class="node"><b>Baseline run</b><span>published + authored rules</span></div>
+      <div class="node"><b>Mutation ladder</b><span>rename → relocate → strip → rotate</span></div>
+      <div class="node"><b>Miss taxonomy</b><span>logic vs telemetry vs scope</span></div>
+      <div class="node"><b>Cross-check</b><span>Zircolite subset</span></div>
+    </div>
+    <p class="note">
+      Behaviour reported by the operating system is not rewritten. The mutations target operator-controlled
+      artifacts, not the way the memory-access behavior itself is performed.
+    </p>
+  </section>
+
+  <section id="results">
+    <p class="section-kicker">Primary experiment</p>
+    <h2>Coverage falls at the cheapest attacker changes</h2>
+    <div class="two">
+      <div class="chart-card">
+        <div class="chart-title">Published rule/capture detections by cumulative mutation tier</div>
+        <div class="chart-sub">Counts exclude authored rules.</div>
+        <div class="ladder">
+          <div class="bar-wrap">
+            <div class="bar-value">35</div><div class="bar" style="height:230px"></div><div class="bar-label">T0 · baseline</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-value">23</div><div class="bar" style="height:151px"></div><div class="bar-label">T1 · rename</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-value">15</div><div class="bar" style="height:99px"></div><div class="bar-label">T2 · relocate</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-value">15</div><div class="bar alt" style="height:99px"></div><div class="bar-label">T3 · strip PE</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-value">15</div><div class="bar alt" style="height:99px"></div><div class="bar-label">T4 · rotate identity</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>What changes the result</h3>
+        <div class="delta">
+          <div><strong>−12</strong><span>detections after renaming</span></div>
+          <div><strong>−8</strong><span>additional detections after relocation</span></div>
+          <div><strong>0</strong><span>additional loss after stripping PE data</span></div>
+          <div><strong>0</strong><span>additional loss after fingerprint rotation</span></div>
+        </div>
+        <p class="note" style="margin-top:18px">
+          T3/T4 stability applies to the selected population in this benchmark. It does not show that
+          version-resource or fingerprint changes never matter elsewhere.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="failure-modes">
+    <p class="section-kicker">Observed failure modes</p>
+    <h2>Why published coverage disappears</h2>
+    <div class="case-grid">
+      <article class="case">
+        <div class="num">1</div>
+        <h3>Name-dependent detections</h3>
+        <p>
+          All three published nanodump detections depend on the literal string <code>dump</code>.
+          Renaming attacker-controlled artifacts reduces nanodump coverage from 3 detections to 0.
+        </p>
+      </article>
+      <article class="case">
+        <div class="num">2</div>
+        <h3>Directory exclusions</h3>
+        <p>
+          Process-access rules exclude common directories such as <code>Program Files</code>,
+          <code>System32</code> and <code>SysWOW64</code>. Relocating the tool into those paths suppresses
+          coverage even when the behavioral event remains.
+        </p>
+      </article>
+      <article class="case">
+        <div class="num">3</div>
+        <h3>Indicator semantics</h3>
+        <p>
+          The Dumpert-specific rule records an import hash as <code>MD5=</code>. The recorded executable
+          event carries that same value as <code>IMPHASH=</code>, causing the hash branch to miss.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-kicker">Coverage interpretation</p>
+    <h2>A miss is not one thing</h2>
+    <p class="lead">
+      The benchmark separates rule failures from missing data and from rules that were never intended
+      to cover the tool used in a given capture. This prevents the result from turning into a simplistic
+      “rules that fired vs rules that did not” score.
+    </p>
+    <div class="taxonomy">
+      <div class="tax detected"><strong>44</strong><span>Detected — at least one event matched.</span></div>
+      <div class="tax logic"><strong>207</strong><span>Logic miss — required telemetry existed, but the rule did not match.</span></div>
+      <div class="tax scope"><strong>273</strong><span>Out of scope — the rule targeted a different named implementation.</span></div>
+      <div class="tax telemetry"><strong>57</strong><span>Telemetry gap — the recording lacked the required event or field.</span></div>
+    </div>
+    <p class="note" style="margin-top:18px">Total: 581 rule × capture pairs in the augmented evaluation.</p>
+  </section>
+
+  <section id="validation">
+    <p class="section-kicker">Validation</p>
+    <h2>Three checks reduce the chance that the result is a harness artifact</h2>
+    <div class="validation-grid">
+      <div class="validation"><strong>0</strong><span>harness-only results in the documented Zircolite cross-check subset</span></div>
+      <div class="validation"><strong>0</strong><span>Zircolite-only results in the same comparison</span></div>
+      <div class="validation"><strong>0</strong><span>count mismatches in that evaluated subset</span></div>
+    </div>
+    <div class="callout">
+      <strong>Transfer test:</strong> the six authored rules were also run without tuning against
+      <strong>783,367 APT29 events</strong> across two days. Three rules fire on both days.
+      <div class="note">This is a transfer test, not a production deployment or end-to-end intrusion reconstruction.</div>
+    </div>
+  </section>
+
+  <section id="upstream">
+    <p class="section-kicker">Upstream impact</p>
+    <h2>One benchmark finding became a SigmaHQ pull request</h2>
+    <div class="prbox">
+      <div>
+        <h3>Dumpert hash type correction</h3>
+        <p>
+          SigmaHQ's Dumpert rule uses
+          <code>MD5=09D278F9DE118EF09163C6140255C690</code>. The repository itself and a recorded
+          Dumpert execution identify that value as an import hash instead.
+        </p>
+        <p>
+          Recorded event:
+          <br><code>MD5=69C05093EB542E1C29A556A29E74E99A</code>
+          <br><code>IMPHASH=09D278F9DE118EF09163C6140255C690</code>
+        </p>
+      </div>
+      <div class="pr-status">
+        <span class="note">SigmaHQ/sigma</span>
+        <b>#6300 · open</b>
+        <p style="margin-bottom:0"><a href="https://github.com/SigmaHQ/sigma/pull/6300">View upstream pull request</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-kicker">Authored detections</p>
+    <h2>Six rules were evaluated separately against attack and non-target telemetry</h2>
+    <p class="lead">
+      The authored rules were created after inspecting measured coverage gaps. Non-target rates below
+      describe the eligible evaluation corpus for each technique; they are not production false-positive rates.
+    </p>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr><th>Rule</th><th>ATT&amp;CK</th><th>Attack captures</th><th>Non-target fires / 100k</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>LSASS Handle Request From Unexpected Process</td><td>T1003.001</td><td>7 / 7</td><td class="num">1.56</td></tr>
+          <tr><td>Process Started From A User Download Directory</td><td>T1204.002</td><td>7 / 7</td><td class="num">0.99</td></tr>
+          <tr><td>SeDebugPrivilege Enabled On A Token</td><td>T1134.001</td><td>4 / 7</td><td class="num">1.48</td></tr>
+          <tr><td>Remote Thread Started From Unbacked Memory</td><td>T1055.002</td><td>3 / 7</td><td class="num">1.02</td></tr>
+          <tr><td>LSASS Dump Via Comsvcs MiniDump Export</td><td>T1003.001</td><td>1 / 7</td><td class="num">0.00</td></tr>
+          <tr><td>PowerShell Script Block Calling MiniDumpWriteDump</td><td>T1003.001</td><td>1 / 7</td><td class="num">0.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="scope">
+    <p class="section-kicker">Scope and limitations</p>
+    <h2>What this study does — and does not — establish</h2>
+    <p class="lead">
+      Seven tools is seven tools, and one lab is one lab. The mutation ladder models inexpensive
+      operator behavior rather than replaying a second set of real intrusions. Missing telemetry in a capture
+      is not treated as evidence that the corresponding detection logic failed.
+    </p>
+    <details>
+      <summary>Key limitations</summary>
+      <ul>
+        <li>The benchmark covers ATT&amp;CK T1003.001, not the full Sigma ruleset.</li>
+        <li>The primary corpus is recorded lab telemetry rather than a production enterprise baseline.</li>
+        <li>Non-target event rates are useful for rejecting obviously noisy rules, not for estimating precise production false-positive rates.</li>
+        <li>A rule that misses this corpus may still provide useful coverage elsewhere.</li>
+        <li>Stability at T3/T4 applies only to the selected rule population measured here.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section>
+    <p class="section-kicker">Reproducibility</p>
+    <h2>Every public number links back to committed inputs or outputs</h2>
+    <p class="lead">
+      Source repositories are pinned to commits, capture archives are pinned by SHA-256, generated figures
+      are derived from committed benchmark JSON, and CI checks that the report has not drifted from those files.
+    </p>
+    <div class="links">
+      <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/docs/method.md">Methodology</a>
+      <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/docs/corpora.md">Corpora</a>
+      <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/benchmark/selection.md">Rule selection</a>
+      <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/docs/reference.md">Command reference</a>
+      <a href="https://github.com/YaCnDehfuli/detection-under-load/tree/main/contrib">Upstream findings</a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div><strong>Detection Under Load</strong> · reproducible detection-engineering research artifact</div>
+    <div class="links">
+      <a href="https://github.com/YaCnDehfuli/detection-under-load">Repository</a>
+      <a href="https://github.com/SigmaHQ/sigma/pull/6300">SigmaHQ PR #6300</a>
+      <a href="https://github.com/YaCnDehfuli/detection-under-load/blob/main/LICENSE">MIT License</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

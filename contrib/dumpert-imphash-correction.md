@@ -1,11 +1,11 @@
-# HackTool - Dumpert Process Dumper Execution cannot fire on Dumpert
+# HackTool - Dumpert Process Dumper Execution misses a recorded Dumpert execution
 
 `rules/windows/process_creation/proc_creation_win_hktl_dumpert.yml`, id
 `2704ab9e-afe2-4854-a3b1-0c0706d03578`, level `critical`.
 
 The rule reads a 32-character hex value as an MD5. The value is an import hash.
-Neither of the rule's two branches matches an execution of the tool it is named
-after, so the rule is silent on Dumpert.
+Neither branch matches the recorded executable form of Dumpert. The
+`Dumpert.dll` command-line branch can still match other forms.
 
 ## The change
 
@@ -103,7 +103,14 @@ of them, because it never matched in the first place.
 
 - Present at pinned commit `1aacbedf7fc04067e6b1b2594c4b7c1c2ff649a9`.
 - Re-checked against `master`: still `MD5=`.
-- Re-check once more immediately before opening a pull request.
+
+### Submitted
+
+Re-verified on `master` at commit `272daf82bf77fb0bb97f1f0c4d82bc61154772e1`
+on 2026-09-07 and opened as [SigmaHQ/sigma#6300](https://github.com/SigmaHQ/sigma/pull/6300).
+With the correction applied, `tests/test_logsource.py` passed (3 tests, OK),
+`tests/test_rules.py` passed (11 tests, OK), and `sigma check` reported
+0 errors, 0 condition errors, and 0 issues.
 
 ## Follow-up offered separately
 

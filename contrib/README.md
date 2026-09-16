@@ -3,15 +3,14 @@
 Three things the harness found in the pinned SigmaHQ tree, written up in the form
 SigmaHQ asks for in `CONTRIBUTING.md`.
 
-**None of this has been sent upstream.** These are drafts held in the repository
-so the evidence is reviewable and the wording can be argued with before anything
-is opened against someone else's project. 
+The Dumpert hash correction has been opened upstream as
+[SigmaHQ/sigma#6300](https://github.com/SigmaHQ/sigma/pull/6300). The other two
+findings remain drafts here so their evidence and wording can be reviewed.
 
-| draft | what it is | how arguable |
+| finding | what it is | status |
 |---|---|---|
-| [dumpert-imphash-correction.md](dumpert-imphash-correction.md) | an encoding defect: an import hash written as an MD5 | not arguable, the rule cannot fire on the tool it names |
-| [lsass-access-mask-exclusions.md](lsass-access-mask-exclusions.md) | measured evidence about one of four documented exclusions | a tuning tradeoff, and the rule authors made it knowingly |
-| [coverage-mapping-issue.md](coverage-mapping-issue.md) | a coverage-mapping gap between a masquerading rule and the technique it covers | a proposal, not a defect |
+| [Dumpert IMPHASH correction](dumpert-imphash-correction.md) | The recorded executable form misses the hash branch because an import hash is labeled as an MD5; the separate `Dumpert.dll` command-line branch can still match other forms. | **Opened — [SigmaHQ/sigma#6300](https://github.com/SigmaHQ/sigma/pull/6300)** |
+| [LSASS access-mask exclusions](lsass-access-mask-exclusions.md) | Measured evidence about one of four documented exclusions; a tuning tradeoff. | Draft |
+| [Coverage mapping](coverage-mapping-issue.md) | A proposed mapping between a masquerading rule and the technique it covers. | Draft; better suited to an issue |
 
-The three are in ascending order of arguability, which is also the order they
-should be offered in.
+The remaining proposals need separate upstream discussion.
