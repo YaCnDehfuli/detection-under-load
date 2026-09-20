@@ -107,7 +107,7 @@ of them, because it never matched in the first place.
 ### Submitted
 
 Re-verified on `master` at commit `272daf82bf77fb0bb97f1f0c4d82bc61154772e1`
-on 2026-09-07 and opened as [SigmaHQ/sigma#6300](https://github.com/SigmaHQ/sigma/pull/6300).
+on 2026-09-07 and opened as [SigmaHQ/sigma#6311](https://github.com/SigmaHQ/sigma/pull/6311).
 With the correction applied, `tests/test_logsource.py` passed (3 tests, OK),
 `tests/test_rules.py` passed (11 tests, OK), and `sigma check` reported
 0 errors, 0 condition errors, and 0 issues.
