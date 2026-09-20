@@ -11,7 +11,7 @@ A reproducible benchmark of published Windows detections for **LSASS credential 
 [**Reproduce**](docs/reference.md) ·
 [**Authored Rules**](rules/) ·
 [**Upstream Findings**](contrib/) ·
-[**SigmaHQ PR #6300**](https://github.com/SigmaHQ/sigma/pull/6300)
+[**SigmaHQ PR #6311**](https://github.com/SigmaHQ/sigma/pull/6311)
 
 [![CI](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml/badge.svg)](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -106,7 +106,7 @@ IMPHASH=09D278F9DE118EF09163C6140255C690
 
 The correction is currently under upstream review:
 
-**[SigmaHQ/sigma#6300 — correct Dumpert process dumper hash type to IMPHASH](https://github.com/SigmaHQ/sigma/pull/6300)**
+**[SigmaHQ/sigma#6311 — correct Dumpert process dumper hash type to IMPHASH](https://github.com/SigmaHQ/sigma/pull/6311)**
 
 The full evidence and reproduction are in
 [`contrib/dumpert-imphash-correction.md`](contrib/dumpert-imphash-correction.md).
