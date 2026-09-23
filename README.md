@@ -104,7 +104,7 @@ MD5=69C05093EB542E1C29A556A29E74E99A
 IMPHASH=09D278F9DE118EF09163C6140255C690
 ```
 
-The correction is currently under upstream review:
+The correction was approved by a SigmaHQ collaborator on 2026-09-21:
 
 **[SigmaHQ/sigma#6311 — correct Dumpert process dumper hash type to IMPHASH](https://github.com/SigmaHQ/sigma/pull/6311)**
 

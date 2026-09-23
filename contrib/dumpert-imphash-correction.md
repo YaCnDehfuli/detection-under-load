@@ -104,13 +104,15 @@ of them, because it never matched in the first place.
 - Present at pinned commit `1aacbedf7fc04067e6b1b2594c4b7c1c2ff649a9`.
 - Re-checked against `master`: still `MD5=`.
 
-### Submitted
+### Upstream status
 
 Re-verified on `master` at commit `272daf82bf77fb0bb97f1f0c4d82bc61154772e1`
 on 2026-09-07 and opened as [SigmaHQ/sigma#6311](https://github.com/SigmaHQ/sigma/pull/6311).
 With the correction applied, `tests/test_logsource.py` passed (3 tests, OK),
 `tests/test_rules.py` passed (11 tests, OK), and `sigma check` reported
 0 errors, 0 condition errors, and 0 issues.
+
+A SigmaHQ collaborator approved the pull request on 2026-09-21.
 
 ## Follow-up offered separately
 
