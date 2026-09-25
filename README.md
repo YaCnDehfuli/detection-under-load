@@ -6,12 +6,14 @@
 
 A reproducible benchmark of published Windows detections for **LSASS credential dumping (ATT&CK T1003.001)**.
 
+**Merged upstream:** [SigmaHQ PR #6311](https://github.com/SigmaHQ/sigma/pull/6311) corrects the Dumpert hash type from MD5 to IMPHASH.
+
 [**Report**](https://yacndehfuli.github.io/detection-under-load/) ·
 [**Method**](docs/method.md) ·
 [**Reproduce**](docs/reference.md) ·
 [**Authored Rules**](rules/) ·
 [**Upstream Findings**](contrib/) ·
-[**SigmaHQ PR #6311**](https://github.com/SigmaHQ/sigma/pull/6311)
+[**Merged SigmaHQ PR #6311**](https://github.com/SigmaHQ/sigma/pull/6311)
 
 [![CI](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml/badge.svg)](https://github.com/YaCnDehfuli/detection-under-load/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -104,7 +106,8 @@ MD5=69C05093EB542E1C29A556A29E74E99A
 IMPHASH=09D278F9DE118EF09163C6140255C690
 ```
 
-The correction was approved by a SigmaHQ collaborator on 2026-09-21:
+The correction was approved by a SigmaHQ collaborator on 2026-09-21 and merged
+upstream on 2026-09-24:
 
 **[SigmaHQ/sigma#6311 — correct Dumpert process dumper hash type to IMPHASH](https://github.com/SigmaHQ/sigma/pull/6311)**
 

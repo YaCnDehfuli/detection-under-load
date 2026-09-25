@@ -1,4 +1,4 @@
-# HackTool - Dumpert Process Dumper Execution misses a recorded Dumpert execution
+# HackTool - Dumpert Process Dumper Execution misses a recorded Dumpert execution (merged upstream)
 
 `rules/windows/process_creation/proc_creation_win_hktl_dumpert.yml`, id
 `2704ab9e-afe2-4854-a3b1-0c0706d03578`, level `critical`.
@@ -102,7 +102,7 @@ of them, because it never matched in the first place.
 ## Verification
 
 - Present at pinned commit `1aacbedf7fc04067e6b1b2594c4b7c1c2ff649a9`.
-- Re-checked against `master`: still `MD5=`.
+- Re-checked before the upstream change against `master`: still `MD5=`.
 
 ### Upstream status
 
@@ -112,7 +112,8 @@ With the correction applied, `tests/test_logsource.py` passed (3 tests, OK),
 `tests/test_rules.py` passed (11 tests, OK), and `sigma check` reported
 0 errors, 0 condition errors, and 0 issues.
 
-A SigmaHQ collaborator approved the pull request on 2026-09-21.
+A SigmaHQ collaborator approved the pull request on 2026-09-21. It was merged
+upstream on 2026-09-24.
 
 ## Follow-up offered separately
 
